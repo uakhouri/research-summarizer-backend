@@ -16,8 +16,7 @@ COPY . .
 #Install Dependencies
 RUN pip install -r requirements.txt
 
-#Expose PORT 8080 for CLoud Run
-EXPOSE 8080
+
 
 #Start FASTApi with uvicorn
 
