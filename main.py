@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from pydantic import BaseModel
+import uvicorn
 from services.ai_service import generate_summary
 from services.pdf_service import extract_text_from_pdf
 from services.paper_extraction import search_arxiv,search_google_scholar
@@ -114,3 +115,6 @@ async def search_and_summarize(
     summarized_papers.append(paper)
 
   return {"papers":summarized_papers}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)
