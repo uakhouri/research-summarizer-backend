@@ -15,13 +15,13 @@ if not openai_api_key:
   raise ValueError("OpenAI API Key is missing!")
 
 #Using a Hugging Face summarization model
-model_name = "allenai/led-large-16384-arxiv"
+model_name = "facebook/bart-large-cnn"
 summarizer = pipeline("summarization", model=model_name)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 
 
-def split_text_into_chunks(text, max_tokens=8192):
+def split_text_into_chunks(text, max_tokens=512):
     """
     Splits text into chunks that fit within the model's token limit.
     Uses Pegasus' tokenizer to ensure chunks are safe.
@@ -55,7 +55,7 @@ def generate_summary(text:str, use_gpt:bool=False):
   """
 
   min_text_length = 50
-  max_input_length = 8192
+  max_input_length = 512
 
   if not text or len(text.strip())<min_text_length:
     return f"Error: Input text is too short ({len(text.strip())} chars). Try a longer document."
@@ -94,7 +94,7 @@ def generate_summary(text:str, use_gpt:bool=False):
 
 
 
-        summary = summarizer(chunk, max_length = 500, min_length =100, do_sample = False)
+        summary = summarizer(chunk, max_length = 150, min_length =50, do_sample = False)
         summaries.append(summary[0]['summary_text'])
       except IndexError as e:
         summaries.append(f"Error: {str(e)} - Input text may be too short.")
