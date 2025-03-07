@@ -1,9 +1,10 @@
 #This file contains the logic for AI-powered summarization using OpenAI's GPT-4.
 
 import openai
-from transformers import pipeline, AutoTokenizer
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 import os
 from dotenv import load_dotenv
+import torch
 
 #loading the env variables
 load_dotenv()
@@ -15,13 +16,16 @@ if not openai_api_key:
   raise ValueError("OpenAI API Key is missing!")
 
 #Using a Hugging Face summarization model
-model_name = "facebook/bart-large-cnn"
-summarizer = pipeline("summarization", model=model_name)
+model_name = "facebook/bart-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name, torch_dtype=torch.float16)
+
+model=model.to("cpu")
+summarizer = pipeline("summarization", model=model_name)
 
 
 
-def split_text_into_chunks(text, max_tokens=512):
+def split_text_into_chunks(text, max_tokens=300):
     """
     Splits text into chunks that fit within the model's token limit.
     Uses Pegasus' tokenizer to ensure chunks are safe.
@@ -49,13 +53,26 @@ def split_text_into_chunks(text, max_tokens=512):
     return chunks
 
 
+def generate_summary_with_model(text):
+    inputs = tokenizer(text, return_tensors="pt", max_length=512, truncation=True)
+    inputs = {key: value.to("cpu") for key, value in inputs.items()}  # Move input to CPU
+    
+    summary_ids = model.generate(**inputs, max_length=150, min_length=50)
+    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return summary
+
+
 def generate_summary(text:str, use_gpt:bool=False):
   """
     Generates a summary of the given text using either GPT - 4 or Hugging Face Model
   """
 
+  inputs = tokenizer(text, return_tensors = "pt", max_length=512, truncation=True)
+  inputs = {key:value.to("cpu") for key, value in inputs.items()}
+
+
   min_text_length = 50
-  max_input_length = 512
+  max_input_length = 300
 
   if not text or len(text.strip())<min_text_length:
     return f"Error: Input text is too short ({len(text.strip())} chars). Try a longer document."
@@ -94,8 +111,8 @@ def generate_summary(text:str, use_gpt:bool=False):
 
 
 
-        summary = summarizer(chunk, max_length = 150, min_length =50, do_sample = False)
-        summaries.append(summary[0]['summary_text'])
+        summary = generate_summary_with_model(chunk)
+        summaries.append(summary)
       except IndexError as e:
         summaries.append(f"Error: {str(e)} - Input text may be too short.")
       except Exception as e:
